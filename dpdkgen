@@ -1,0 +1,144 @@
+#!/bin/sh
+
+. ${0}.cfg
+
+## Check number of lcores
+_ncores=`cat /proc/cpuinfo | grep -w processor | wc -l`
+if [ "${_ncores}" -lt 2 ]; then
+    echo "${0##*/} needs at least 2 CPUs to run (3 CPUs recomended)."
+    echo "Please increase the number of CPUs and try again."
+    exit 1
+fi
+
+#################################################################
+## Mount HugeTLBfs
+_mount=`mount | grep hugetlbfs`
+if [ -z "${_mount}" ]; then
+    echo "Mounting HugeTLBfs to ${TLBFS_DIR}..."
+    sudo mkdir -p ${TLBFS_DIR}
+    sudo mount -t hugetlbfs none ${TLBFS_DIR}
+fi
+
+## Configure huge pages
+_nr_pages=`cat /proc/sys/vm/nr_hugepages`
+if [ "${_nr_pages}" -eq 0 ]; then
+    echo "Configuring ${NB_HUGEPAGES} huge pages..."
+    sudo -s bash -c "echo ${NB_HUGEPAGES} > /proc/sys/vm/nr_hugepages"
+fi
+
+## Load Kernel Modules
+if ! lsmod | grep -w uio >/dev/null; then
+    echo "Loading uio kernel module..."
+    sudo modprobe uio
+fi
+for module in rte_kni igb_uio; do
+    if ! lsmod | grep -w ${module} >/dev/null; then
+        echo "Loading ${module} kernel module..."
+        sudo insmod ${PKTGEN_SDK}/${PKTGEN_TARGET}/kmod/${module}.ko
+    fi
+done
+
+
+#################################################################
+## Get destination IP/MAC
+if [ "${1}" = "" ]; then
+    echo "Usage:"
+    echo "    ${0##*/} <dst_ip>"
+    exit 1
+fi
+_dst_ip="${1}"
+ping -c 1 ${_dst_ip} -W 1 -q > /dev/null 2>&1
+_dst_mac=`arp -a | grep -w "${_dst_ip}" | awk '{print $4}'`
+if [ -z "${_dst_mac}" ]; then
+    _dst_mac="${DEF_DST_MAC}"
+fi
+echo "Destination IP: ${_dst_ip} MAC: ${_dst_mac}"
+
+
+#################################################################
+## Get source information
+echo -n "Source dev: ${VM_IF}"
+
+_ip=`sudo ifconfig ${VM_IF} | grep "inet addr" | cut -d ':' -f 2 | cut -d ' ' -f 1`
+if [ -z "${_ip}" ]; then
+    _ip="${DEF_SRC_IP}"
+fi
+echo -n " IP: ${_ip}"
+
+_mask=`sudo ifconfig ${VM_IF} | grep "inet addr" | cut -d ':' -f 4 | cut -d ' ' -f 1`
+if [ -z "${_mask}" ]; then
+    _mask="${DEF_SRC_MASK}"
+fi
+echo -n " mask: ${_mask}"
+
+_mac=`cat /sys/class/net/${VM_IF}/address`
+if [ -z "${_mac}" ]; then
+    _mac="${DEF_SRC_MAC}"
+fi
+echo -n " MAC: ${_mac}"
+
+_pci=`sudo -E ${BIND} --status | grep -w "${VM_IF}" | head -1 | cut -d ' ' -f 1`
+if [ -z "${_pci}" ]; then
+    _pci=`sudo -E ${BIND} --status | grep igb_uio | head -1 | cut -d ' ' -f 1`
+fi
+echo -n " PCI: ${_pci}"
+
+_drv=`sudo -E ${BIND} --status | grep -w "${VM_IF}" | head -1 | cut -d '=' -f 3 | awk '{print $1}'`
+if [ -z "${_drv}" ]; then
+    _drv=`sudo -E ${BIND} --status | grep igb_uio | head -1 | cut -d '=' -f 3 | awk '{print $1}'`
+fi
+echo " drv: ${_drv}"
+read -p "Press Enter to start DPDK packet generator..." _ent
+
+#################################################################
+## Re-bind NIC to DPDK Drivers
+sudo ifconfig ${VM_IF} down
+sudo -E ${BIND} -b igb_uio ${_pci}
+
+LUA="/tmp/pktgen.$$.lua"
+
+#################################################################
+## Start pktgen
+# Clear huge tables
+sudo rm -f "${TLBFS_DIR}/pgmap*"
+
+# Generate Lua script
+cat ${0}.lua \
+    | sed -e "s/\${SRC_IP}/${_ip}/" \
+    | sed -e "s/\${SRC_MAC}/${_mac}/" \
+    | sed -e "s/\${DST_IP}/${_dst_ip}/" \
+    | sed -e "s/\${DST_IP_MAX}/${_dst_ip}/" \
+    | sed -e "s/\${DST_MAC}/${_dst_mac}/" \
+    > ${LUA}
+
+# Start Pktgen-DPDK
+if [ "${_ncores}" -gt 2 ]; then
+    (cd ${PKTGEN_SDK}/examples/pktgen; \
+        sudo ${PKTGEN} -c 7 -n 4 -w ${_pci} --file-prefix pg \
+        -- -T -p 7 -P -m "[1:2].0" -f ${LUA})
+elif [ "${_ncores}" -gt 1 ]; then
+    (cd ${PKTGEN_SDK}/examples/pktgen; \
+        sudo ${PKTGEN} -c 3 -n 4 -w ${_pci} --file-prefix pg \
+        -- -T -p 7 -P -m "[1:1].0" -f ${LUA})
+fi
+
+# Remove temporary Lua script
+rm -f ${LUA}
+
+
+#################################################################
+## Re-bind Interface to Linux Driver
+sudo -E ${BIND} -b ${_drv} ${_pci}
+#sudo -E ${BIND} --status
+
+#################################################################
+## Remove Kernel Modules
+#sudo rmmod rte_kni.ko
+#sudo rmmod igb_uio.ko
+
+#################################################################
+## Configure Linux Interface
+sudo ifconfig ${VM_IF} ${_ip} netmask ${_mask}
+sudo ifconfig ${VM_IF} up
+
+#sudo ifconfig ${VM_IF}
