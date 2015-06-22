@@ -41,18 +41,26 @@ done
 
 #################################################################
 ## Get destination IP/MAC
-if [ "${1}" = "" ]; then
+if [ "${1}" = "" ] || [ "${2}" = "" ]; then
     echo "Usage:"
-    echo "    ${0##*/} <dst_ip>"
+    echo "    ${0##*/} <dst_ip> <test.lua>"
     exit 1
 fi
 _dst_ip="${1}"
+_test_file="${2}"
+
+if [ ! -f "${_test_file}" ]; then
+    echo "The test file does not exist."
+    exit 1
+fi
+
 ping -c 1 ${_dst_ip} -W 1 -q > /dev/null 2>&1
 _dst_mac=`arp -a | grep -w "${_dst_ip}" | awk '{print $4}'`
 if [ -z "${_dst_mac}" ]; then
     _dst_mac="${DEF_DST_MAC}"
 fi
 echo "Destination IP: ${_dst_ip} MAC: ${_dst_mac}"
+echo "Selected test: ${_test_file}"
 
 
 #################################################################
@@ -103,7 +111,7 @@ LUA="/tmp/pktgen.$$.lua"
 sudo rm -f "${TLBFS_DIR}/pgmap*"
 
 # Generate Lua script
-cat ${0}.lua \
+cat ${_test_file}.lua \
     | sed -e "s/\${SRC_IP}/${_ip}/" \
     | sed -e "s/\${SRC_MAC}/${_mac}/" \
     | sed -e "s/\${DST_IP}/${_dst_ip}/" \
