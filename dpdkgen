@@ -111,7 +111,7 @@ LUA="/tmp/pktgen.$$.lua"
 sudo rm -f "${TLBFS_DIR}/pgmap*"
 
 # Generate Lua script
-cat ${_test_file}.lua \
+cat ${_test_file} \
     | sed -e "s/\${SRC_IP}/${_ip}/" \
     | sed -e "s/\${SRC_MAC}/${_mac}/" \
     | sed -e "s/\${DST_IP}/${_dst_ip}/" \
