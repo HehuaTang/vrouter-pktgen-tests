@@ -8,7 +8,7 @@
 package.path = package.path ..";?.lua;test/?.lua;app/?.lua;../?.lua"
 
 require "Pktgen";
-require "/root/bin/functions"
+require "/root/vrouter-pktgen-tests/functions"
 
 local sendport = "0";
 local rcvport = "0";
