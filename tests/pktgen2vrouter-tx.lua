@@ -48,11 +48,8 @@ pktgen.src_ip("all", "inc", "0.0.0.0");
 pktgen.src_ip("all", "min", srcip);
 pktgen.src_ip("all", "max", srcip);
 
-local pktSize = tonumber(pktgen.input("Size of MPLSoUDP packets to send (64-1518B): "));
-if pktSize == nil then
-    pktSize = 64;
-end
-pktgen.set(sendport, "size", pktSize);
+pktgen.continue("Press a key to start sending packets.");
+printf("\nGo!\n");
 
 printf("\n*** Sending %dB packets. Run pktgen2vrouter-rx on the VM. ***\n", pktSize, send_for_secs);
 pktgen.start(sendport);
