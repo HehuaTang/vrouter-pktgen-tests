@@ -49,20 +49,20 @@ you can find in this repo.
 
 ### VM1 --- vRouter1 ---<MPLSoUDP>--- vRouter2 --- VM2
 On both vRouter nodes:
-1. Clone repo
-2. Adjust 00.config
-3. Copy vRouter, utils and agent to /root/contrail/build/${OPTIMIZATION}/
-3. ./10.setup-linux.sh, ./30.bind-ifs.sh, ./40.start-vrouter.sh,
+ 1. Clone repo
+ 2. Adjust 00.config
+ 3. Copy vRouter, utils and agent to /root/contrail/build/${OPTIMIZATION}/
+ 3. ./10.setup-linux.sh, ./30.bind-ifs.sh, ./40.start-vrouter.sh,
    ./50.start-agent.sh, ./60.mpls-o-udp.sh, ./80.start-vm.sh
-4. Connect to VMs (e.g. with gvncviewer or another client of your choice)
-5. Generate traffic from VM to VM. You can use Pktgen-DPDK.
+ 4. Connect to VMs (e.g. with gvncviewer or another client of your choice)
+ 5. Generate traffic from VM to VM. You can use Pktgen-DPDK.
 
 ### VM --- vRouter ---<MPLSoUDP>--- Pktgen-DPDK@Linux
 On vRouter node:
-1. Points 1. to 4. from the previous example.
+ 1. Points 1. to 4. from the previous example.
 On Linux node:
-1. Clone Pktgen-DPDK from [Semihalf/Pktgen-DPDK](https://github.com/Semihalf/Pktgen-DPDK)
-2. cd Pktgen-DPDK && clone DPDK from [dpdk.org/browse/dpdk](http://dpdk.org/browse/dpdk/)
-3. Compile DPDK, compile Pktgen-DPDK
-4. Connect to VM, launch Pktgen-DPDK with pktgen2vrouter-rx.lua
-5. On Linux node launch Pktgen-DPDK with pktgen2vrouter-tx.lua
+ 1. Clone Pktgen-DPDK from [Semihalf/Pktgen-DPDK](https://github.com/Semihalf/Pktgen-DPDK)
+ 2. cd Pktgen-DPDK && clone DPDK from [dpdk.org/browse/dpdk](http://dpdk.org/browse/dpdk/)
+ 3. Compile DPDK, compile Pktgen-DPDK
+ 4. Connect to VM, launch Pktgen-DPDK with pktgen2vrouter-rx.lua
+ 5. On Linux node launch Pktgen-DPDK with pktgen2vrouter-tx.lua
