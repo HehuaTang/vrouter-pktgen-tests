@@ -121,11 +121,11 @@ cat ${_test_file} \
 
 # Start Pktgen-DPDK
 if [ "${_ncores}" -gt 2 ]; then
-    (cd ${PKTGEN_SDK}/examples/pktgen; \
+    (cd ${PKTGEN_DIR}; \
         sudo ${PKTGEN} -c 7 -n 4 -w ${_pci} --file-prefix pg \
         -- -T -p 7 -P -m "[1:2].0" -f ${LUA})
 elif [ "${_ncores}" -gt 1 ]; then
-    (cd ${PKTGEN_SDK}/examples/pktgen; \
+    (cd ${PKTGEN_DIR}; \
         sudo ${PKTGEN} -c 3 -n 4 -w ${_pci} --file-prefix pg \
         -- -T -p 7 -P -m "[1:1].0" -f ${LUA})
 fi
