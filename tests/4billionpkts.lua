@@ -29,7 +29,8 @@ pktgen.set_ipaddr(sendport, "src", srcip..netmask);
 pktgen.set_mac(sendport, dst_mac);
 pktgen.set(sendport, "rate", rate);
 
-pktgen.range(sendport, "on");
+pktgen.range(sendport, "off");
+pktgen.set_proto(sendport..","..rcvport, "udp")
 --pktgen.page("range");
 
 pktgen.dst_mac("all", dst_mac);
