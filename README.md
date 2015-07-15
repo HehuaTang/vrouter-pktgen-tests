@@ -14,24 +14,24 @@ Tests:
 * 5mins.lua: check how many packets were sent in 300 seconds time.  
 * 4billionpkts.lua: check how long does it take to send 4 294 967 295  
   packets.  
-* pktgen2vrouter-rx.lua, pktgen2vrouter-tx.lua - used with the following
-  setup:
+* pktgen2vrouter-5mins.lua, pktgen2vrouter-4billionpkts.lua: to be ran
+  in pair with 5mins.lua and 4billionpkts.lua, but on a Linux node with
+  Pktgen-DPDK, in the following setup:
   VM --- vRouter ---<MPLSoUDP>--- Pktgen-DPDK@Linux
 
-5mins and 4billionpkts tests display result with following data:  
+Tests display result with following data:  
 * duration in seconds, number of packets sent, TX speed in Mpkts/sec,  
     number of packets received, RX speed in Mpkts/sec, delta TX'd packets  
     minus RX'd packets.  
 
-Logs are saved in /root.
+Logs with result are saved in /root.
 
 ## vRouter Configuration Scripts
 Those scripts can be used to configure vRouter for defined scenarios. Currently
 supported:
 * MPLSoUDP
-  VM1 --- vRouter1 ---<MPLSoUDP>--- vRouter2 --- VM2
-  or
-  VM --- vRouter ---<MPLSoUDP>--- Pktgen-DPDK@Linux (use scripts on vRouter node only)
+  * VM1 --- vRouter1 ---MPLSoUDP--- vRouter2 --- VM2
+  * VM --- vRouter ---MPLSoUDP--- Pktgen-DPDK@Linux
 
 You should see the 00.config.sh script to adjust configuration for your needs,
 e.g. MAC and IP addresses, filenames of VM qcow2 images, etc.
@@ -60,9 +60,10 @@ On both vRouter nodes:
 ### VM --- vRouter ---<MPLSoUDP>--- Pktgen-DPDK@Linux
 On vRouter node:
  1. Points 1. to 4. from the previous example.
+ 2. Connect to VM, launch Pktgen-DPDK with 5mins.lua or 4billionpkts.lua
+
 On Linux node:
  1. Clone Pktgen-DPDK from [Semihalf/Pktgen-DPDK](https://github.com/Semihalf/Pktgen-DPDK)
  2. cd Pktgen-DPDK && clone DPDK from [dpdk.org/browse/dpdk](http://dpdk.org/browse/dpdk/)
  3. Compile DPDK, compile Pktgen-DPDK
- 4. Connect to VM, launch Pktgen-DPDK with pktgen2vrouter-rx.lua
- 5. On Linux node launch Pktgen-DPDK with pktgen2vrouter-tx.lua
+ 4. Launch Pktgen-DPDK with pktgen2vrouter-5mins.lua or pktgen2vrouter-4billion.lua
