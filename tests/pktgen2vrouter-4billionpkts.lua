@@ -2,7 +2,7 @@
 -- Pktgen-DPDK Contrail-vRouter test script
 -- Send MPLSoUDP packets until stopped.
 --
--- This script should run on a Linux box in the following setup:
+-- This script should run on a LInux box in the following setup:
 -- VM1 -- VROUTER1 -- <MPLS tunnel> -- Pktgen-DPDK@Linux
 --
 -- Copyright (c) 2015 Semihalf. All rights reserved.
@@ -23,8 +23,11 @@ local src_mac = "${SRC_MAC}";
 local dst_mac = "${DST_MAC}";
 local rate = 100;
 local size = 110;
+local count = 4294967295; --max value for Pktgen
 local udp_dport = 51234; --vRouter listens here
+local log_file = "/root/pktgen2vrouter_4billionpkts."..os.time()..".log";
 
+pktgen.set(sendport, "count", count);
 pktgen.set_ipaddr(sendport, "dst", dstip);
 pktgen.set_ipaddr(sendport, "src", srcip..netmask);
 pktgen.set_mac(sendport, dst_mac);
@@ -49,11 +52,28 @@ pktgen.src_ip("all", "min", srcip);
 pktgen.src_ip("all", "max", srcip);
 
 pktgen.continue("Press a key to start sending packets.");
-printf("\nGo!\n");
 
-printf("\n*** Sending %dB packets. Run pktgen2vrouter-rx on the VM. ***\n", pktSize, send_for_secs);
+printf("\n*** Sending %d packets and measuring time ***\n", count);
 pktgen.start(sendport);
+local start_time = os.time();
 
-pktgen.continue("Press a key to stop sending packets.");
-pktgen.stop(sendport);
+-- It's impossible to do simply start = os.time(); start(0); stop = os.time()
+-- because it will be executed immediately, while test will be running in
+-- background. So we're polling the state of the port. 0 == not sending.
+while pktgen.isSending(sendport)[0] ~= 0 do
+    sleep(1);
+end
+local time = os.difftime(os.time(), start_time);
+
+local stats = pktgen.portStats(sendport..","..rcvport, "port");
+local sentpkts = stats[tonumber(sendport)].opackets;
+local rcvdpkts = stats[tonumber(rcvport)].ipackets;
+
+printf("\n*** RESULT:\tFinished in\t\t%d seconds\n", time);
+printf("\t\tsent %d pkts\t%.4f Mpkts/sec\n", sentpkts, (sentpkts/1000000)/time);
+printf("\t\trcvd %d pkts\t%.4f Mpkts/sec\n", rcvdpkts, (rcvdpkts/1000000)/time);
+printf("\t\tdeltapkts(TX - RX):\t%d pkts\n***\n", sentpkts-rcvdpkts);
+
+printf("\nWriting to file %s\n", log_file);
+write_stats_to_file(log_file, sendport, rcvport, time);
 
