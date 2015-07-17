@@ -1,6 +1,6 @@
 # vrouter-pktgen-tests
 ## Pktgen-DPDK
-Scripts launching Pktgen-DPDK and testing performance of Contrail-vRouter.
+Script launching Pktgen-DPDK and testing performance of Contrail-vRouter.
 
 Adjust dpdkgen.cfg if neeeded.
 
@@ -25,6 +25,14 @@ Tests display result with following data:
     minus RX'd packets.  
 
 Logs with result are saved in /root.
+
+## L2fwd
+Script launching l2fwd example DPDK application.
+
+Adjust dpdkgen.cfg if neeeded.
+
+Usage:  
+* l2fwd
 
 ## vRouter Configuration Scripts
 Those scripts can be used to configure vRouter for defined scenarios. Currently
