@@ -1,0 +1,75 @@
+#!/bin/sh
+
+. $(dirname ${0})/dpdkgen.cfg
+
+## Check number of lcores
+_ncores=`cat /proc/cpuinfo | grep -w processor | wc -l`
+if [ "${_ncores}" -lt 2 ]; then
+    echo "${0##*/} needs at least 2 CPUs to run (3 CPUs recomended)."
+    echo "Please increase the number of CPUs and try again."
+    exit 1
+fi
+
+#################################################################
+## Mount HugeTLBfs
+_mount=`mount | grep hugetlbfs`
+if [ -z "${_mount}" ]; then
+    echo "Mounting HugeTLBfs to ${TLBFS_DIR}..."
+    sudo mkdir -p ${TLBFS_DIR}
+    sudo mount -t hugetlbfs none ${TLBFS_DIR}
+fi
+
+## Configure huge pages
+_nr_pages=`cat /proc/sys/vm/nr_hugepages`
+if [ "${_nr_pages}" -eq 0 ]; then
+    echo "Configuring ${NB_HUGEPAGES} huge pages..."
+    sudo -s bash -c "echo ${NB_HUGEPAGES} > /proc/sys/vm/nr_hugepages"
+fi
+
+## Load Kernel Modules
+if ! lsmod | grep -w uio >/dev/null; then
+    echo "Loading uio kernel module..."
+    sudo modprobe uio
+fi
+for module in rte_kni igb_uio; do
+    if ! lsmod | grep -w ${module} >/dev/null; then
+        echo "Loading ${module} kernel module..."
+        sudo insmod ${PKTGEN_SDK}/${PKTGEN_TARGET}/kmod/${module}.ko
+    fi
+done
+
+
+#################################################################
+## Re-bind NIC to DPDK Drivers
+sudo ifconfig ${VM_IF} down
+sudo -E ${BIND} -b igb_uio ${_pci}
+
+
+#################################################################
+## Start l2fwd
+# Clear huge tables
+sudo rm -f "${TLBFS_DIR}/pgmap*"
+
+if [ "${_ncores}" -gt 2 ]; then
+    sudo ${L2FWD} -c 7 -n 4 -- -q 8 -p 1
+elif [ "${_ncores}" -gt 1 ]; then
+    sudo ${L2FWD} -c 3 -n 4 -- -q 8 -p 1
+fi
+
+
+#################################################################
+## Re-bind Interface to Linux Driver
+sudo -E ${BIND} -b ${_drv} ${_pci}
+#sudo -E ${BIND} --status
+
+#################################################################
+## Remove Kernel Modules
+#sudo rmmod rte_kni.ko
+#sudo rmmod igb_uio.ko
+
+#################################################################
+## Configure Linux Interface
+sudo ifconfig ${VM_IF} ${_ip} netmask ${_mask}
+sudo ifconfig ${VM_IF} up
+
+#sudo ifconfig ${VM_IF}
